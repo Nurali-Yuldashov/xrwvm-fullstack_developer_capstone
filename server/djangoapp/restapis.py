@@ -1,7 +1,10 @@
 # Uncomment the imports below before you add the function code
-# import requests
+import requests
 import os
 from dotenv import load_dotenv
+import logging
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -12,21 +15,32 @@ sentiment_analyzer_url = os.getenv(
     default="http://localhost:5050/")
 
 def get_request(endpoint, **kwargs):
-    params = ""
-    if(kwargs):
-        for key,value in kwargs.items():
-            params=params+key+"="+value+"&"
-
-    request_url = backend_url+endpoint+"?"+params
-
-    print("GET from {} ".format(request_url))
+    """
+    Make a GET request to the specified endpoint
+    """
     try:
-        # Call get method of requests library with URL and parameters
-        response = requests.get(request_url)
+        # Construct parameters string if any
+        params = "&".join([f"{key}={value}" for key, value in kwargs.items()]) if kwargs else ""
+        
+        # Construct the full URL
+        request_url = f"{backend_url}/{endpoint}"
+        if params:
+            request_url += f"?{params}"
+            
+        logger.info(f"Making GET request to: {request_url}")
+        
+        # Make the GET request with timeout
+        response = requests.get(request_url, timeout=10)
+        response.raise_for_status()  # Raises an HTTPError for bad responses
+        
         return response.json()
-    except:
-        # If any error occurs
-        print("Network exception occurred")
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error in get_request: {str(e)}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error in get_request: {str(e)}")
+        return None
 
 def analyze_review_sentiments(text):
     request_url = sentiment_analyzer_url+"analyze/"+text
@@ -58,7 +72,35 @@ def add_review(request):
     else:
         return JsonResponse({"status":403,"message":"Unauthorized"})
 
-
+def post_request(endpoint, json_data):
+    """
+    Send a POST request to the specified endpoint
+    Parameters:
+        - endpoint: The API endpoint to call
+        - json_data: The data to send in the request body
+    Returns:
+        - Response from the API
+    """
+    try:
+        # Construct the full URL
+        request_url = f"{backend_url}/{endpoint}"
+        
+        # Make the POST request
+        response = requests.post(
+            request_url,
+            json=json_data,
+            headers={'Content-Type': 'application/json'}
+        )
+        
+        # Check if the request was successful
+        response.raise_for_status()
+        
+        # Return the JSON response
+        return response.json()
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error making POST request: {str(e)}")
+        return None
 
 def get_dealer_reviews(request, dealer_id):
     # if dealer id has been provided

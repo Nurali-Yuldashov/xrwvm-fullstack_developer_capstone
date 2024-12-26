@@ -81,12 +81,20 @@ def registration(request):
 
 #Update the `get_dealerships` render list of dealerships all by default, particular state if state is passed
 def get_dealerships(request, state="All"):
-    if(state == "All"):
-        endpoint = "/fetchDealers"
-    else:
-        endpoint = "/fetchDealers/"+state
-    dealerships = get_request(endpoint)
-    return JsonResponse({"status":200,"dealers":dealerships})
+    try:
+        if state == "All":
+            endpoint = "fetchDealers"  # Remove the leading slash
+        else:
+            endpoint = f"fetchDealers/{state}"
+        
+        dealerships = get_request(endpoint)
+        if dealerships:
+            return JsonResponse({"status": 200, "dealers": dealerships})
+        else:
+            return JsonResponse({"status": 404, "message": "No dealers found"})
+    except Exception as e:
+        logger.error(f"Error in get_dealerships: {str(e)}")
+        return JsonResponse({"status": 500, "error": str(e)})
 
 # Create a `get_dealer_reviews` view to render the reviews of a dealer
 # def get_dealer_reviews(request,dealer_id):
