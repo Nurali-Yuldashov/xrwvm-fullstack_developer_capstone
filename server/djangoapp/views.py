@@ -90,15 +90,132 @@ def get_dealerships(request, state="All"):
 
 # Create a `get_dealer_reviews` view to render the reviews of a dealer
 # def get_dealer_reviews(request,dealer_id):
-# ...
+def get_dealer_reviews(request, dealer_id):
+    """
+    Retrieve reviews for a specific dealer
+    Parameters:
+        - dealer_id: The ID of the dealer
+    Returns:
+        - JsonResponse containing dealer reviews
+    """
+    try:
+        # Get reviews from the backend API
+        reviews = get_request(f"dealers/{dealer_id}/reviews")
+        
+        if reviews:
+            # Process and format the reviews
+            formatted_reviews = []
+            for review in reviews:
+                formatted_review = {
+                    "id": review.get("id"),
+                    "reviewer": review.get("name", "Anonymous"),
+                    "dealership": dealer_id,
+                    "review": review.get("review", ""),
+                    "purchase": review.get("purchase", False),
+                    "purchase_date": review.get("purchase_date", ""),
+                    "car_make": review.get("car_make", ""),
+                    "car_model": review.get("car_model", ""),
+                    "car_year": review.get("car_year", ""),
+                    "rating": review.get("rating", 0)
+                }
+                formatted_reviews.append(formatted_review)
+                
+            return JsonResponse({"reviews": formatted_reviews})
+        else:
+            return JsonResponse({"error": "No reviews found"}, status=404)
+            
+    except Exception as e:
+        print(f"Error getting dealer reviews: {str(e)}")
+        return JsonResponse({"error": str(e)}, status=500)
 
 # Create a `get_dealer_details` view to render the dealer details
 # def get_dealer_details(request, dealer_id):
-# ...
+def get_dealer_details(request, dealer_id):
+    """
+    Retrieve details for a specific dealer
+    Parameters:
+        - dealer_id: The ID of the dealer
+    Returns:
+        - JsonResponse containing dealer details
+    """
+    try:
+        # Call the get_request from restapis.py to get dealer details
+        url = f"https://api.example.com/api/dealers/{dealer_id}"  # Replace with your actual API endpoint
+        dealer_details = get_request(f"dealers/{dealer_id}")
+        
+        if dealer_details:
+            dealer_data = {
+                "id": dealer_id,
+                "name": dealer_details.get("full_name", ""),
+                "address": dealer_details.get("address", ""),
+                "city": dealer_details.get("city", ""),
+                "state": dealer_details.get("state", ""),
+                "zip": dealer_details.get("zip", ""),
+                "phone": dealer_details.get("phone", ""),
+                "email": dealer_details.get("email", "")
+            }
+            return JsonResponse({"dealer": dealer_data})
+        else:
+            return JsonResponse({"error": "Dealer not found"}, status=404)
+            
+    except Exception as e:
+        print(f"Error getting dealer details: {str(e)}")
+        return JsonResponse({"error": str(e)}, status=500)
 
 # Create a `add_review` view to submit a review
 # def add_review(request):
-# ...
+@csrf_exempt
+def add_review(request):
+    """
+    Add a review for a specific dealer
+    """
+    if request.method == "POST":
+        try:
+            # Parse the JSON data from the request body
+            review_data = json.loads(request.body)
+            
+            # Extract review data
+            dealer_id = review_data.get('dealer_id')
+            review = review_data.get('review')
+            purchase = review_data.get('purchase', False)
+            purchase_date = review_data.get('purchase_date', '')
+            car_make = review_data.get('car_make', '')
+            car_model = review_data.get('car_model', '')
+            car_year = review_data.get('car_year', '')
+            rating = review_data.get('rating', 0)
+            
+            # Validate required fields
+            if not all([dealer_id, review, rating]):
+                return JsonResponse({
+                    "error": "Missing required fields"
+                }, status=400)
+            
+            # Create review data structure
+            new_review = {
+                "dealer_id": dealer_id,
+                "review": review,
+                "purchase": purchase,
+                "purchase_date": purchase_date,
+                "car_make": car_make,
+                "car_model": car_model,
+                "car_year": car_year,
+                "rating": rating
+            }
+            
+            # Send the review to your backend API
+            response = post_request('reviews/dealer/' + str(dealer_id), new_review)
+            
+            if response:
+                return JsonResponse({"message": "Review added successfully"})
+            else:
+                return JsonResponse({"error": "Failed to add review"}, status=500)
+                
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    else:
+        return JsonResponse({"error": "Method not allowed"}, status=405)
 
 logger = logging.getLogger(__name__)
 

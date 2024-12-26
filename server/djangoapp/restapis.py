@@ -58,6 +58,8 @@ def add_review(request):
     else:
         return JsonResponse({"status":403,"message":"Unauthorized"})
 
+
+
 def get_dealer_reviews(request, dealer_id):
     # if dealer id has been provided
     if(dealer_id):
